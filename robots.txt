@@ -1,0 +1,3 @@
+# DEMO: remove the noindex meta tags and this Disallow before going live
+User-agent: *
+Disallow: /

@@ -1,39 +1,23 @@
-# Meridian Estates — Awwwards Edition V3
+# Paradise Real Estate — demo site
 
-A premium, editorial real-estate experience focused on architecture, materiality and calm motion.
+Static site (HTML/CSS/JS). No build step.
 
-## Pages
-- Home
-- Listings + filters
-- Individual property pages
-- Our Story
-- Journal
-- Contact
+## Run locally
+    npm install
+    npm run dev
 
-## V3 upgrades
-- Cinematic entrance loader
-- Scroll-aware glass navigation
-- Smooth page-to-page fade transitions
-- Custom desktop cursor interaction
-- Premium hover states and image zoom
-- Editorial typography system
-- Animated reveal-on-scroll sections
-- Floating back-to-top control
-- Responsive mobile navigation
-- Reduced-motion accessibility support
-- Improved metadata and theme color
+## Personalise for a prospect (2 minutes)
+    npm run rebrand -- --name "Acme Homes" --email hi@acme.com --phone "+971 4 111 2222" --whatsapp 971501112222 --domain https://acme.onrender.com --demoBy "Your Agency"
+Then replace `assets/paradise-icon.png` and `assets/paradise-logo-full.png` with the prospect's logo.
+Demo pill text/link: `PARADISE.demo` at the top of `script.js`.
 
-## Preview
-Open `index.html` after extracting the ZIP. Internet access is needed for Google Fonts and Unsplash imagery.
+## Deploy on Render (free static site)
+1. Push this folder to a GitHub repo.
+2. Render → New → Static Site → pick the repo. Build command: leave empty (or `echo ok`). Publish directory: `.`
+   (or use the included `render.yaml` as a Blueprint).
+3. Share the `https://<name>.onrender.com` link.
 
-
-3D PROJECT ATLAS
-- Added five supplied Dubai/real-estate images under assets/.
-- Home page includes five distinct 3D project compositions with cursor-responsive depth.
-- Listings reuse the supplied imagery and Dubai-oriented project data.
-- 3D interactions gracefully disable on reduced-motion/mobile.
-
-
-Responsive update: final iPad/tablet/mobile pass added, including safe viewport units, touch-friendly 3D card interaction, overflow protection, adaptive gallery grids, and mobile/iPad-specific sizing.
-
-
+## Going live for a real client
+- Remove `<meta name="robots" content="noindex,nofollow">` from every page and change `robots.txt` to `Allow: /`.
+- Set `PARADISE.demo.enabled = false` in `script.js`.
+- Replace stock photos/videos, listing data, and add Privacy/Terms pages and the RERA/permit numbers.

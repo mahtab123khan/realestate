@@ -1,0 +1,14 @@
+{
+  "name": "paradise-real-estate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Paradise Real Estate - static website",
+  "scripts": {
+    "dev": "http-server . -p 3000 -c-1 -o",
+    "start": "http-server . -p 3000 -c-1 -o",
+    "rebrand": "node rebrand.js"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

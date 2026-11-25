@@ -1,3 +1,11 @@
+/* ---- Site settings: edit these before launch ---- */
+const PARADISE = {
+    whatsapp: '971500000000',          // WhatsApp number, country code first, no + or spaces
+    email: 'hello@paradise.example',   // enquiries are emailed here if no form endpoint is set
+    formEndpoint: '',                  // optional: Formspree / Getform URL. When set, enquiries are POSTed there instead
+    demo: { enabled: true, by: 'Your Agency', link: '' }   // small "demo prepared by" pill. Set enabled:false for production
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const A = window.anime || null; // anime.js — everything below falls back gracefully if it didn't load
     const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -6,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.classList.add('is-loading');
     const loader = document.createElement('div');
     loader.className = 'loader';
-    loader.innerHTML = '<div class="loader-inner"><div class="loader-brand"><span class="loader-mark"></span>Meridian</div><div class="loader-line"><i></i></div></div>';
+    loader.innerHTML = '<div class="loader-inner"><div class="loader-brand"><span class="loader-mark"></span>Paradise</div><div class="loader-line"><i></i></div></div>';
     document.body.prepend(loader);
 
     if (A && !reduceMotion) {
@@ -38,20 +46,91 @@ document.addEventListener('DOMContentLoaded', () => {
             if (A) A({ targets: open.children, opacity: [0, 1], translateX: [-16, 0], delay: A.stagger(60), duration: 400, easing: 'easeOutQuad' });
         })
     }
-    document.querySelectorAll('[data-filter]').forEach(btn => btn.addEventListener('click', () => {
-        document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const f = btn.dataset.filter;
-        const cards = Array.from(document.querySelectorAll('[data-type]'));
-        cards.forEach(card => {
-            const show = f === 'all' || card.dataset.type === f;
-            if (A && !reduceMotion) {
-                if (show) { card.style.display = 'block'; A({ targets: card, opacity: [0, 1], translateY: [16, 0], scale: [.97, 1], duration: 450, easing: 'easeOutQuad' }) }
-                else { A({ targets: card, opacity: 0, scale: .96, duration: 220, easing: 'easeInQuad', complete: () => { card.style.display = 'none' } }) }
-            } else { card.style.display = show ? 'block' : 'none' }
+    const grid = document.querySelector('.all-listings');
+    if (grid) {
+        const cards = Array.from(grid.querySelectorAll('[data-type]'));
+        const qEl = document.getElementById('q'), sortEl = document.getElementById('sort'), countEl = document.getElementById('count'), emptyEl = document.getElementById('empty');
+        let f = 'all', q = '';
+        const apply = animate => {
+            let n = 0;
+            cards.forEach(c => {
+                const show = (f === 'all' || (f === 'saved' ? (window.__isSaved ? window.__isSaved(c.getAttribute('href')) : false) : c.dataset.type === f)) && (!q || (c.dataset.name + ' ' + c.dataset.area).toLowerCase().includes(q));
+                c.style.display = show ? '' : 'none';
+                if (show) { n++; if (animate && A && !reduceMotion) A({ targets: c, opacity: [0, 1], translateY: [16, 0], duration: 450, easing: 'easeOutQuad' }); else c.style.opacity = 1 }
+            });
+            if (countEl) countEl.textContent = n + (n === 1 ? ' home' : ' homes');
+            if (emptyEl) emptyEl.hidden = n > 0;
+        };
+        document.querySelectorAll('[data-filter]').forEach(btn => btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active'); f = btn.dataset.filter; apply(true);
+        }));
+        if (qEl) qEl.addEventListener('input', () => { q = qEl.value.trim().toLowerCase(); apply(false) });
+        if (sortEl) sortEl.addEventListener('change', () => {
+            const d = sortEl.value;
+            cards.slice().sort((x, y) => d === 'desc' ? y.dataset.price - x.dataset.price : d === 'asc' ? x.dataset.price - y.dataset.price : x.dataset.i - y.dataset.i).forEach(c => grid.appendChild(c));
         });
-    }));
+        apply(false);
+    }
     document.querySelectorAll('[data-year]').forEach(el => el.textContent = new Date().getFullYear());
+
+    const LOCAL = ['assets/dubai-skyline.jpg', 'assets/dubai-waterfront.jpg', 'assets/dubai-night.jpg', 'assets/dubai-beach-residence.jpg', 'assets/modern-tower.jpg'];
+    document.querySelectorAll('img').forEach((img, i) => {
+        img.addEventListener('error', () => { if (img.dataset.fb) return; img.dataset.fb = '1'; img.src = LOCAL[i % LOCAL.length] });
+    });
+
+    /* ================= Enquiry delivery (endpoint -> else mailto) ================= */
+    const collect = form => Array.from(form.querySelectorAll('.field')).map(f => {
+        const l = f.querySelector('label'), c = f.querySelector('input,select,textarea');
+        return l && c && c.value ? l.textContent.trim() + ': ' + c.value.trim() : null
+    }).filter(Boolean);
+    const sendEnquiry = form => {
+        const lines = collect(form); lines.push('Page: ' + location.href);
+        if (PARADISE.formEndpoint) {
+            fetch(PARADISE.formEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ message: lines.join('\n') }) }).catch(() => { });
+        } else {
+            location.href = 'mailto:' + PARADISE.email + '?subject=' + encodeURIComponent('Enquiry — ' + document.title.split('—')[0].trim()) + '&body=' + encodeURIComponent(lines.join('\n'));
+        }
+    };
+    const contactForm = document.getElementById('contactForm');
+    if (contactForm) contactForm.addEventListener('submit', e => {
+        e.preventDefault(); sendEnquiry(contactForm);
+        contactForm.innerHTML = '<div class="field full"><div class="eyebrow">Thank you</div><h3>Your enquiry is on its way.</h3><p>A Paradise agent will be in touch within one business day.</p></div>';
+    });
+
+    /* ================= WhatsApp button ================= */
+    const wa = document.createElement('a');
+    wa.className = 'wa-btn'; wa.target = '_blank'; wa.rel = 'noopener'; wa.setAttribute('aria-label', 'Chat on WhatsApp');
+    wa.href = 'https://wa.me/' + PARADISE.whatsapp + '?text=' + encodeURIComponent('Hello Paradise, I am interested in ' + document.title.split('—')[0].trim());
+    wa.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M4 4h16a2 2 0 012 2v10a2 2 0 01-2 2H9l-5 4v-4H4a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg><span>WhatsApp</span>';
+    document.body.appendChild(wa);
+
+    /* ================= Shortlist (saved homes) + share ================= */
+    let saved = []; try { saved = JSON.parse(localStorage.getItem('psaved') || '[]') } catch (e) { }
+    const persist = () => { try { localStorage.setItem('psaved', JSON.stringify(saved)) } catch (e) { } };
+    const isSaved = href => saved.includes(href);
+    const toggleSaved = href => { saved = isSaved(href) ? saved.filter(x => x !== href) : saved.concat(href); persist() };
+    const savedCount = document.getElementById('savedCount');
+    const paintSaved = () => {
+        if (savedCount) savedCount.textContent = saved.length;
+        document.querySelectorAll('.save-btn').forEach(b => { const on = isSaved(b.dataset.href); b.textContent = on ? '♥' : '♡'; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on) });
+        const pb = document.querySelector('[data-save]'); if (pb) pb.textContent = (isSaved(page0) ? '♥ Saved' : '♡ Save');
+    };
+    const page0 = location.pathname.split('/').pop() || 'index.html';
+    document.querySelectorAll('.all-listings .property-card').forEach(card => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'save-btn'; b.dataset.href = card.getAttribute('href'); b.setAttribute('aria-label', 'Save ' + (card.dataset.name || 'home'));
+        b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); toggleSaved(b.dataset.href); paintSaved(); if (document.querySelector('[data-filter="saved"].active')) document.querySelector('[data-filter="saved"]').click() });
+        card.appendChild(b);
+    });
+    const pageSave = document.querySelector('[data-save]');
+    if (pageSave) pageSave.addEventListener('click', () => { toggleSaved(page0); paintSaved() });
+    const share = document.querySelector('[data-share]');
+    if (share) share.addEventListener('click', async () => {
+        const data = { title: document.title, url: location.href };
+        try { if (navigator.share) await navigator.share(data); else { await navigator.clipboard.writeText(location.href); share.textContent = 'Link copied'; setTimeout(() => share.textContent = 'Share', 1800) } } catch (e) { }
+    });
+    window.__isSaved = isSaved;
+    paintSaved();
 
     /* ================= Back to top ================= */
     const back = document.createElement('button'); back.className = 'backtop'; back.setAttribute('aria-label', 'Back to top'); back.textContent = '↑'; document.body.appendChild(back);
@@ -78,6 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => location.href = a.href, 260);
             })
         }
+    });
+
+    addEventListener('pageshow', e => {
+        if (e.persisted) { document.body.style.opacity = ''; document.body.style.transition = ''; document.body.classList.remove('is-loading'); document.querySelectorAll('.loader').forEach(l => l.remove()) }
     });
 
     /* ================= Reveal-on-scroll (anime.js stagger, CSS fallback) ================= */
@@ -108,6 +191,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    document.querySelectorAll('video').forEach(v => {
+        const fail = () => { const m = v.closest('.hero-media'); if (m) m.classList.add('video-failed'); v.style.display = 'none'; };
+        v.addEventListener('error', fail);
+        const src = v.querySelector('source'); if (src) src.addEventListener('error', fail);
+    });
+
     /* ================= Enquiry button + modal ================= */
     const pageTitle = document.title.split('—')[0].trim();
     const enquiryBtn = document.createElement('button');
@@ -127,14 +216,14 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="field"><label>Last name</label><input required></div>
           <div class="field"><label>Email</label><input type="email" required></div>
           <div class="field"><label>Phone</label><input></div>
-          <div class="field full"><label>Interested in</label><input value="${pageTitle === 'Meridian' ? '' : pageTitle}" placeholder="A property, a neighborhood..."></div>
+          <div class="field full"><label>Interested in</label><input value="${pageTitle === 'Paradise' ? '' : pageTitle}" placeholder="A property, a neighborhood..."></div>
           <div class="field full"><label>Message</label><textarea placeholder="Tell us what you're looking for..."></textarea></div>
           <div class="field full"><button class="btn" type="submit">Send enquiry →</button></div>
         </form>
         <div class="enquiry-success" hidden>
           <div class="eyebrow">Thank you</div>
           <h3>Your enquiry is on its way.</h3>
-          <p>A Meridian agent will be in touch within one business day.</p>
+          <p>A Paradise agent will be in touch within one business day.</p>
         </div>
       </div>`;
     document.body.appendChild(enquiryOverlay);
@@ -162,6 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     enquiryOverlay.addEventListener('click', e => { if (e.target === enquiryOverlay) closeMx(enquiryOverlay, enquiryPanel) });
     enquiryOverlay.querySelector('#mxEnquiryForm').addEventListener('submit', e => {
         e.preventDefault();
+        sendEnquiry(e.target);
         const form = enquiryOverlay.querySelector('#mxEnquiryForm'), success = enquiryOverlay.querySelector('.enquiry-success');
         form.hidden = true; success.hidden = false;
         if (A && !reduceMotion) A({ targets: success, opacity: [0, 1], translateY: [16, 0], duration: 500, easing: 'easeOutExpo' });
@@ -218,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const page = location.pathname.split('/').pop() || 'index.html';
     const videoConfig = {
-        'index.html': { sel: '.split-media', video: VIDS.interior2, label: 'Watch the Meridian method' },
+        'index.html': { sel: '.split-media', video: VIDS.interior2, label: 'Watch the Paradise method' },
         'about.html': { sel: '.split-media', video: VIDS.interior1, label: 'Step inside our story' },
         'contact.html': { sel: '.split-media', video: VIDS.interior2, label: 'A look inside our office' },
         'journal.html': { sel: '.article.feature img', label: 'Watch the walkthrough', video: VIDS.interior1 },
@@ -227,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'property-fernwood.html': { sel: '.detail-image', video: VIDS.interior1, label: 'Watch video tour' },
         'property-row.html': { sel: '.detail-image', video: VIDS.interior2, label: 'Watch video tour' }
     };
-    const cfg = videoConfig[page];
+    const cfg = videoConfig[page] || (page.startsWith('property-') ? { sel: '.detail-image', video: VIDS.interior1, label: 'Watch video tour' } : null);
     const playIcon = '<div class="play-circle"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>';
     if (cfg) {
         let target = document.querySelector(cfg.sel);
@@ -285,13 +375,104 @@ document.addEventListener('DOMContentLoaded', () => {
         counterObs.observe(el);
     });
 
+    /* ================= Accessibility: label association, burger state, reduced-motion video ================= */
+    let fid = 0;
+    document.querySelectorAll('.field').forEach(fe => {
+        const l = fe.querySelector('label'), c = fe.querySelector('input,select,textarea');
+        if (l && c) { c.id = c.id || 'fld' + (++fid); l.htmlFor = c.id }
+    });
+    if (burger) burger.addEventListener('click', () => burger.setAttribute('aria-expanded', String(!!document.querySelector('.mobile-panel'))));
+    if (reduceMotion) document.querySelectorAll('video').forEach(v => { v.removeAttribute('autoplay'); v.pause() });
+
+    /* ================= Currency toggle (AED / USD, AED is pegged at 3.6725) ================= */
+    const RATE = 3.6725; let cur = 'AED';
+    try { cur = localStorage.getItem('pcur') || 'AED' } catch (e) { }
+    const fmt = (n, usdStep = 1000) => cur === 'USD' ? '$' + (Math.round(n / RATE / usdStep) * usdStep).toLocaleString('en-US') : 'AED ' + Math.round(n).toLocaleString('en-US');
+    const paintCur = () => {
+        document.querySelectorAll('[data-aed]').forEach(e => e.textContent = fmt(+e.dataset.aed, +(e.dataset.step || 1000)) + (e.dataset.suffix || ''));
+        document.querySelectorAll('[data-cur-toggle]').forEach(b => b.textContent = cur === 'AED' ? 'Show in USD' : 'Show in AED');
+        document.dispatchEvent(new Event('curchange'));
+    };
+    document.querySelectorAll('[data-cur-toggle]').forEach(b => b.addEventListener('click', () => {
+        cur = cur === 'AED' ? 'USD' : 'AED'; try { localStorage.setItem('pcur', cur) } catch (e) { } paintCur();
+    }));
+
+    /* ================= Mortgage estimate ================= */
+    document.querySelectorAll('[data-calc]').forEach(c => {
+        const price = +c.dataset.price, d = c.querySelector('[data-down]'), r = c.querySelector('[data-rate]'), t = c.querySelector('[data-term]'), out = c.querySelector('[data-pay]');
+        const upd = () => {
+            const loan = price * (1 - d.value / 100), i = r.value / 1200, n = t.value * 12;
+            const pay = i ? loan * i / (1 - Math.pow(1 + i, -n)) : loan / n;
+            c.querySelector('[data-o-down]').textContent = d.value + '%';
+            c.querySelector('[data-o-rate]').textContent = Number(r.value).toFixed(1) + '%';
+            c.querySelector('[data-o-term]').textContent = t.value + ' yrs';
+            out.textContent = fmt(pay, 1) + ' / month';
+            const rent = c.querySelector('[data-rent]'), y = c.querySelector('[data-yield]');
+            if (rent && y) y.textContent = +rent.value > 0 ? 'Gross rental yield on your figure: ' + (rent.value / price * 100).toFixed(1) + '%' : '';
+        };
+        [d, r, t, c.querySelector('[data-rent]')].filter(Boolean).forEach(x => x.addEventListener('input', upd));
+        document.addEventListener('curchange', upd); upd();
+    });
+    paintCur();
+
+    /* ================= Compare (listings) ================= */
+    const cmpCards = document.querySelectorAll('.all-listings .property-card');
+    if (cmpCards.length) {
+        let picks = [];
+        const bar = document.createElement('div'); bar.className = 'cmp-bar'; bar.hidden = true;
+        bar.innerHTML = '<span class="cmp-n"></span><button type="button" class="btn" data-cmp-open>Compare →</button><button type="button" class="cmp-clear" data-cmp-clear>Clear</button>';
+        document.body.appendChild(bar);
+        const ov = document.createElement('div'); ov.className = 'mx-overlay';
+        ov.innerHTML = '<button class="mx-close" data-close aria-label="Close">&times;</button><div class="enquiry-panel cmp-panel"></div>';
+        document.body.appendChild(ov);
+        const panel = ov.querySelector('.cmp-panel');
+        const paintCmp = () => {
+            cmpCards.forEach(c => { const on = picks.includes(c), b = c.querySelector('.cmp-btn'); b.classList.toggle('on', on); b.textContent = on ? '✓ Comparing' : '+ Compare' });
+            bar.hidden = !picks.length; bar.querySelector('.cmp-n').textContent = picks.length + ' / 3 selected';
+            bar.querySelector('[data-cmp-open]').disabled = picks.length < 2;
+        };
+        cmpCards.forEach(c => {
+            const b = document.createElement('button'); b.type = 'button'; b.className = 'cmp-btn';
+            b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); picks = picks.includes(c) ? picks.filter(x => x !== c) : (picks.length < 3 ? picks.concat(c) : picks); paintCmp() });
+            c.appendChild(b);
+        });
+        bar.querySelector('[data-cmp-clear]').addEventListener('click', () => { picks = []; paintCmp() });
+        bar.querySelector('[data-cmp-open]').addEventListener('click', () => {
+            const rows = picks.map(c => ({ n: c.dataset.name, a: c.dataset.area, b: c.dataset.beds, ba: c.dataset.baths, sq: +c.dataset.sqft, p: +c.dataset.price, href: c.getAttribute('href') }));
+            const best = Math.min(...rows.map(r => r.p / r.sq));
+            const row = (label, fn) => '<tr><th>' + label + '</th>' + rows.map(r => '<td' + (label === 'Price / sqft' && r.p / r.sq === best ? ' class="best"' : '') + '>' + fn(r) + '</td>').join('') + '</tr>';
+            panel.innerHTML = '<div class="eyebrow">Side by side</div><h2>Compare homes</h2><div class="cmp-scroll"><table class="cmp-table"><thead><tr><th></th>' + rows.map(r => '<th><a href="' + r.href + '">' + r.n + '</a></th>').join('') + '</tr></thead><tbody>'
+                + row('Area', r => r.a) + row('Bedrooms', r => r.b) + row('Bathrooms', r => r.ba) + row('Size', r => r.sq.toLocaleString() + ' sqft')
+                + row('Price', r => fmt(r.p)) + row('Price / sqft', r => fmt(r.p / r.sq, 1)) + '</tbody></table></div><p class="map-note">Highlighted cell = lowest price per square foot.</p>';
+            openOverlay(ov, panel);
+        });
+        ov.querySelector('[data-close]').addEventListener('click', () => closeMx(ov, panel));
+        ov.addEventListener('click', e => { if (e.target === ov) closeMx(ov, panel) });
+        paintCmp();
+    }
+
+    /* ================= Viewing request -> WhatsApp ================= */
+    document.querySelectorAll('[data-viewing]').forEach(form => {
+        const d = form.querySelector('[data-date]'); if (d) d.min = new Date().toISOString().slice(0, 10);
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const v = Array.from(form.querySelectorAll('input,select')).map(x => x.value);
+            const msg = 'Hello, I would like to book a viewing of ' + form.dataset.name + '.\nName: ' + v[0] + '\nPhone: ' + v[1] + '\nDate: ' + v[2] + '\nTime: ' + v[3];
+            window.open('https://wa.me/' + PARADISE.whatsapp + '?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+        });
+    });
+
+    /* ================= Demo pill ================= */
+    if (PARADISE.demo && PARADISE.demo.enabled && !sessionStorage.getItem('demoHide')) {
+        const pill = document.createElement('div'); pill.className = 'demo-pill';
+        pill.innerHTML = '<span>Live demo · built by ' + PARADISE.demo.by + '</span>' + (PARADISE.demo.link ? '<a href="' + PARADISE.demo.link + '" target="_blank" rel="noopener">Talk to us</a>' : '') + '<button type="button" aria-label="Hide">&times;</button>';
+        pill.querySelector('button').addEventListener('click', () => { pill.remove(); try { sessionStorage.setItem('demoHide', '1') } catch (e) { } });
+        document.body.appendChild(pill);
+    }
+
     /* ================= Card hover pop (anime.js) ================= */
     if (A && !reduceMotion) {
-        document.querySelectorAll('.property-card, .article').forEach(card => {
-            card.addEventListener('mouseenter', () => A({ targets: card, translateY: -8, duration: 400, easing: 'easeOutQuad' }));
-            card.addEventListener('mouseleave', () => A({ targets: card, translateY: 0, duration: 400, easing: 'easeOutQuad' }));
-        });
-        document.querySelectorAll('.btn, .nav-cta').forEach(btn => {
+                document.querySelectorAll('.btn, .nav-cta').forEach(btn => {
             btn.addEventListener('mouseenter', () => A({ targets: btn, scale: 1.045, duration: 300, easing: 'easeOutQuad' }));
             btn.addEventListener('mouseleave', () => A({ targets: btn, scale: 1, duration: 300, easing: 'easeOutQuad' }));
         });
@@ -317,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* =========================================================
-   MERIDIAN 3D LAYER — lightweight Three.js architectural scene
+   PARADISE 3D LAYER — lightweight Three.js architectural scene
    ========================================================= */
 (function(){
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
